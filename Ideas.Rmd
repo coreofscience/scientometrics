@@ -1,0 +1,10 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+ 
+# Ideas
+
+1. ToSr could be a package that only performs the algorithm. This is because it could received a data frame and not a bib or txt object. 
+
+2. Maybe build a citation network function? and ToS algorithm could receive the tidied graph. 
