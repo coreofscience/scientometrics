@@ -465,7 +465,12 @@ ToS philosophy has been based on three pillars: simplicity, effectiveness and in
 
 
 
-
+get_data <- function(scopus_dataframe){
+  
+  references_df        <- get_references(scopus_dataframe)
+  citation_network     <- get_citation_network(scopus_dataframe, references_df = references_df)
+  citation_network_tos <- get_citation_network_tos(citation_network)
+}
 # ------------------ CREACION DE LA FUNCION PRINCIPAL  ------------------------
 
 server <- function(input, output,session) {
@@ -476,20 +481,35 @@ server <- function(input, output,session) {
     convert2df(file = input$file1$datapath, dbsource = "scopus",format   = "bibtex")
   })
   
+  citation_tos <- reactive({
+    scopus_dataframe     <- data()
+    new_data <- get_data(scopus_dataframe)
+    return(new_data)
+  })
+  
+  citation_tos1 <- reactive({
+    scopus_dataframe     <- data()
+    new_data <- get_data(scopus_dataframe)
+    TOS <- get_sap(new_data)
+    return(TOS)
+  })
+  
+  
   # Se crea el arbol TOS
   output$contents <- DT::renderDataTable({
+     
+    # scopus_dataframe <- data()
+    # #edgelista        <- edgelista.bib(scopus_dataframe)
+    # #grafo            <- crear.grafo(edgelista)
+    # #TOS              <- algoritmoSAP(grafo)
+    # #TOS$link <- paste0("https://www.google.com/search?q=",TOS$id)
+    # #TOS$link <- paste0("<a href='",TOS$link,"'>",TOS$link,"</a>")
+    # references_df        <- get_references(scopus_dataframe)
+    # citation_network     <- get_citation_network(scopus_dataframe, references_df = references_df)
+    # citation_network_tos <- get_citation_network_tos(citation_network)
+    # TOS                  <- get_sap(citation_network)
     
-    scopus_dataframe <- data()
-    #edgelista        <- edgelista.bib(scopus_dataframe)
-    #grafo            <- crear.grafo(edgelista)
-    #TOS              <- algoritmoSAP(grafo)
-    #TOS$link <- paste0("https://www.google.com/search?q=",TOS$id)
-    #TOS$link <- paste0("<a href='",TOS$link,"'>",TOS$link,"</a>")
-    references_df        <- get_references(scopus_dataframe)
-    citation_network     <- get_citation_network(scopus_dataframe, references_df = references_df)
-    citation_network_tos <- get_citation_network_tos(citation_network)
-    TOS                  <- get_sap(citation_network)
-    
+    TOS <- citation_tos1()
     
     if (input$tosid == "All"){
       return(DT::datatable(TOS,escape = FALSE))
@@ -507,16 +527,16 @@ server <- function(input, output,session) {
     
   })
   
-  citation_tos <- reactive({
-    scopus_dataframe     <- data()
-    references_df        <- get_references(scopus_dataframe)
-    citation_network     <- get_citation_network(scopus_dataframe, references_df = references_df)
-    citation_network_tos <- get_citation_network_tos(citation_network)
-  })
-
-  datatos <- reactive({
-    TOS                  <- get_sap(citation_tos())
-  })
+  # citation_tos <- reactive({
+  #   scopus_dataframe     <- data()
+  #   references_df        <- get_references(scopus_dataframe)
+  #   citation_network     <- get_citation_network(scopus_dataframe, references_df = references_df)
+  #   citation_network_tos <- get_citation_network_tos(citation_network)
+  # })
+  # 
+  # datatos <- reactive({
+  #   TOS                  <- get_sap(citation_tos())
+  # })
   
 
   
@@ -526,7 +546,7 @@ server <- function(input, output,session) {
     },
     content = function(file) {
       #write.csv(TOS, file, row.names = FALSE)
-      write.table(datatos(),file,sep=";")
+      write.table(citation_tos(),file,sep=";")
     }
   )
   
