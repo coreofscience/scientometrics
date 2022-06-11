@@ -2,6 +2,7 @@ get_references <- function(data) {
 
   references_df <-
     data |>
+    filter(!duplicated(TI)) |>
     select(SR, CR) |>
     na.omit()  |>
     separate_rows(CR, sep = "; ") |>
@@ -96,13 +97,13 @@ get_references <- function(data) {
            ref_type = type_ref, CR_ref = CR) |>
     filter(!is.na(SR_ref))
   # Finding right SR_ref in main dataset
-  references_df_1 <- tibble()
-
-  list_ref_TI <-
-    references_df |>
-    filter(ref_type == 1) |>
-    select(TI) |>
-    dplyr::distinct()
+  # references_df_1 <- tibble()
+  #
+  # list_ref_TI <-
+  #   references_df |>
+  #   filter(ref_type == 1) |>
+  #   select(TI) |>
+  #   dplyr::distinct()
 
   # for (i in list_ref_TI$TI) {
   #
@@ -128,7 +129,7 @@ get_references <- function(data) {
   #   }
   #
   # }
-  #
+
   # Finding duplicate titles in references with different SR_ref
 
   TI_ref_duplicates <-
@@ -166,7 +167,34 @@ get_references <- function(data) {
 
   }
 
-  return(references_df = df_1)
+  # Converting long journal names in short names.
+
+  df_2 <-
+    data |>
+    select(JI, SO) |>
+    dplyr::distinct() |>
+    filter(!duplicated(SO)) |>
+    mutate(JI = str_remove_all(JI, "\\."),
+           JI = str_trim(JI)) |>
+    rename(JI_main = JI)
+
+  df_3 <-
+    references_df |>
+    left_join(df_2, by = c("JI" = "SO")) |>
+    mutate(JI_main = if_else(is.na(JI_main), JI, JI_main),
+           SR_new = if_else(ref_type == 1,
+                            str_extract(SR_ref, "([^,]*,[^,]*)"),
+                            SR_ref),
+           SR_new = if_else(ref_type == 1,
+                            str_c(SR_new, JI_main, sep = ", "),
+                            SR_ref),
+           SR_new = if_else(is.na(SR_new), SR_ref,
+                            SR_new)) |>
+    filter(!is.na(SR_new)) |>
+    select(SR, SR_ref = SR_new, TI, AU, JI, PY, CR_ref, ref_type)
+
+
+  return(references_df = df_3)
 }
 
 
@@ -425,8 +453,41 @@ get_sap <- function(citation_network) {
     PY     <- c(PY, nodes[mask,'PY'])
   }
   TOS <- TOS %>%
-    mutate(Title = titles, PY = PY)
+    mutate(Title = titles, PY = PY) %>%
+    separate(col = 'id', into = c("Author", "year", "Journal"), sep = ',')
 
-  return(TOS)
+  return(TOS[, c(4,5,6,1,3)])
 
 }
+
+extract_subareas <- function(citation_tos){
+
+  citation_tos <- as_tibble(citation_tos)
+  subfields <- citation_tos %>% group_by(subfield) %>% count() %>%
+    arrange(desc(n)) %>%
+    head(3) %>%
+    select(subfield)
+
+  group1             <- citation_tos[citation_tos$subfield == subfields$subfield[1],] %>%
+    mutate(group = 'Group 1')
+  group2             <- citation_tos[citation_tos$subfield == subfields$subfield[2],] %>%
+    mutate(group = 'Group 2')
+
+  group3             <- citation_tos[citation_tos$subfield == subfields$subfield[3],] %>%
+    mutate(group = 'Group 3')
+
+  referencias.grupo  <- rbind(group1,group2, group3) %>%
+    separate(col = 'name', into = c("Author", "year", "Journal"), sep = ',')
+
+  return(referencias.grupo[, c(4,5,1,3,9)])
+}
+
+
+
+
+
+
+
+
+
+
